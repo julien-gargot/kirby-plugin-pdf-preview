@@ -1,5 +1,7 @@
 <?php
 
+use Kirby\Cms\Filename;
+
 Kirby::plugin('julien-gargot/pdf-preview', [
 
   'fileMethods' => [
@@ -8,11 +10,15 @@ Kirby::plugin('julien-gargot/pdf-preview', [
       if($this->mime() !== 'application/pdf') return $this;
 
       $extension   = 'jpg';
-      $src         = $this->root();
-      $dst         = $this->root() . '.' . $extension;
-      $previewName = basename($dst);
+      $mediaRoot = dirname($this->mediaRoot());
+      $src       = $this->root() . '.' . $extension;
+      $dst       = $mediaRoot . '/{{ name }}.{{ extension }}';
+      $thumbRoot = (new Filename($src, $dst))->toString();
+      $thumbName = basename($thumbRoot);
 
-      if (!f::exists($dst) || (f::modified($dst) < $this->modified())) {
+      if (!is_dir($mediaRoot)) mkdir($mediaRoot, 0777, true);
+
+      if (!f::exists($thumbRoot) || (f::modified($thumbRoot) < $this->modified())) {
 
         $im = new Imagick();
         $im->setResolution(96,96);
@@ -21,12 +27,13 @@ Kirby::plugin('julien-gargot/pdf-preview', [
         $im->setImageAlphaChannel(imagick::ALPHACHANNEL_REMOVE);
         $im->setImageFormat($extension);
         $im->setImageCompression(Imagick::COMPRESSION_JPEG);
-        $im->writeImage($dst);
+        $im->writeImage($thumbRoot);
 
       }
 
       return new File([
-        'filename' => $previewName,
+        'filename' => $thumbName,
+        'url'      => dirname($this->mediaUrl()) . '/' . $thumbName,
         'parent'   => $this->parent(),
       ]);
 
